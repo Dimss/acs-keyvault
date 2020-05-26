@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keyvault-agent-t
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keyvault
+  template:
+    metadata:
+      labels:
+        app: keyvault
+        aadpodidbinding: "demo-kv-access"
+    spec:
+      containers:
+        - name: keyvault-agent
+          image: docker.io/dimssss/acs-keyvalut-agent:0.4
+          command: ["/bin/bash","-c","sleep 3600"]
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: VAULT_BASE_URL
+              value: https://cloud-runtime-stg-cus.vault.azure.net
+            - name: SERVICE_PRINCIPLE_FILE_PATH
+              value: /host/azure.json
+            - name: SECRETS_FOLDER
+              value: /secrets
+            - name: AUTO_DETECT_AAD_TENANT
+              value: "false"
+            - name: USE_MSI
+              value: "true"
+
+          volumeMounts:
+            - name: secrets
+              mountPath: /secrets
+
+            - name: host-sp
+              mountPath: /host/azure.json
+              readOnly: true
+      volumes:
+        - name: secrets
+          emptyDir:
+            # we want the secrets to reside only in-memory
+            medium: Memory
+
+        - name: host-sp
+          hostPath:
+            # this file contains the cluster service-principal, it exists on every node by default
+            path: /etc/kubernetes/azure.json
+            type: File

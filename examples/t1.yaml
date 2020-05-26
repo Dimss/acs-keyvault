@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-keyvault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keyvault
+  template:
+    metadata:
+      labels:
+        app: keyvault
+        aadpodidbinding: "demo-kv-access"
+    spec:
+      containers:
+        - name: keyvault-agent
+          image: wdatpacreus.azurecr.io/genevamdm:master_33
+          command: ["/bin/bash","-c","sleep infinity"]
+
+          volumeMounts:
+            - name: secrets
+              mountPath: /secrets
+
+            - name: host-sp
+              mountPath: /host/azure.json
+              readOnly: true
+      volumes:
+        - name: secrets
+          emptyDir:
+            medium: Memory
+
+        - name: host-sp
+          hostPath:
+            path: /etc/kubernetes/azure.json
+            type: File

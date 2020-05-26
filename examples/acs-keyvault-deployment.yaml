@@ -1,0 +1,76 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: test-keyvault
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: keyvault
+    spec:
+      containers:
+      - image: alpine:latest
+        name: test-app
+        command: ["/bin/sh", "-c", "--"]
+        args: ["while true; do sleep 5; done;"]
+        volumeMounts:
+        - name: secrets
+          mountPath: /secrets
+          readOnly: true
+
+      initContainers:
+      - name: keyvault-agent
+        image: <IMAGE_PATH>
+        env:
+        - name: VAULT_BASE_URL
+          value: <VAULT_URL>
+        - name: SERVICE_PRINCIPLE_FILE_PATH
+          value: /host/azure.json
+        - name: SECRETS_FOLDER
+          value: /secrets
+        - name: SECRETS_KEYS
+          value: <SECRET_KEYS>
+          # <Secret_Keys> format
+          # Begin Example 1
+          # Basic case - Secret not backing a certificate and key
+        - name: SECRETS_KEYS
+          value: SecretName
+          # End Example 1
+          # Below format provides output filename for certificate and key
+          # Begin Example 2
+          # Secret backing a certificate and key. 
+          #Certificate and key will be stored with certs_keys folder with name CertFileName.pem and KeyFilename.pem
+          #<Secret>:<version>:<cert_filename>:<key_filename>
+        - name: SECRETS_KEYS
+          value: SecretName::CertFileName.pem:KeyFilename.pem
+          # End Example 2
+          # Begin Example 3
+          # Secret is not backing a certificate and key.  In this case script will error and exit as there is no secret backing a certificate
+        - name: SECRETS_KEYS
+          value: SecretName::CertFileName.pem
+          # End Example 3          
+        - name: CERTS_KEYS
+          value: <CERT_KEYS>
+          # Set this to true if AAD tenant should be auto detected
+        - name: AUTO_DETECT_AAD_TENANT
+          value: "false"
+
+        volumeMounts:
+        - name: secrets
+          mountPath: /secrets
+
+        - name: host-sp
+          mountPath: /host/azure.json
+          readOnly: true
+      volumes:
+      - name: secrets
+        emptyDir:
+          # we want the secrets to reside only in-memory
+          medium: Memory
+
+      - name: host-sp
+        hostPath:
+          # this file contains the cluster service-principal, it exists on every node by default
+          path: /etc/kubernetes/azure.json
+          type: File

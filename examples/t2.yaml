@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubectl-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubectl-test
+  template:
+    metadata:
+      labels:
+        app: kubectl-test
+    spec:
+      containers:
+        - name: kubectl-test
+          image: bitnami/kubectl
+          command: ["kubectl"]
+          args: ["get", "pods"]
